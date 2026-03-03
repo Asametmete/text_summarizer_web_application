@@ -1,0 +1,5 @@
+ModelIngestion :
+  root_dir: ModelPkl
+  model_pretrained_path: Model/ModelFolder/Model_t5
+  model_path: ModelPkl/model.pkl
+  tokenizer_path: ModelPkl/tokenizer.pkl
