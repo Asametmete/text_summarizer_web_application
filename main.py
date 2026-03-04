@@ -1,9 +1,10 @@
-from src.textSummarizerWebApplication.pipeline.stage_01_ModelApiPreprocessing import ModelApiPreprocessingPipeline
 from src.textSummarizerWebApplication.logging import logger
 from src.textSummarizerWebApplication.pipeline.stage_02_ModelApiCreating import ModelApiCreatingPipeline
 import uvicorn
 
 """
+from src.textSummarizerWebApplication.pipeline.stage_01_ModelApiPreprocessing import ModelApiPreprocessingPipeline
+
 STAGE_01 = "Model Api Preprocessing"
 
 try:
