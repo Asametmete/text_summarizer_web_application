@@ -1,7 +1,9 @@
 import logging
 import sys
+import os
 
 logging_str = "[%(asctime)s: %(levelname)s: %(module)s: %(message)s]"
+os.makedirs("logs", exist_ok=True)
 log_filepath = "logs/running_logs.log"
 
 logging.basicConfig(
