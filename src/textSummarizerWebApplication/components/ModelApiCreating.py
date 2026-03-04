@@ -38,7 +38,7 @@ class ModelApiCreating:
             client = request.app.state.client
 
             response = await client.post(
-                "https://router.huggingface.co/models/sametmete3436/t5-small-summarizer",
+                "https://router.huggingface.co/hf-inference/models/sametmete3436/t5-small-summarizer",
                 headers={"Authorization": f"Bearer {hf_token}"},
                 json={"inputs": request_body.text}
             )
