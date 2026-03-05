@@ -1,51 +1,61 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+import pickle
 from pydantic import BaseModel
-from contextlib import asynccontextmanager
-import httpx
-import os
+import torch
 from src.textSummarizerWebApplication.entity import ModelApiEntity
-
 
 class ModelApiCreating:
 
-    def __init__(self, config: ModelApiEntity):
+    def __init__(self, config:ModelApiEntity):
         self.config = config
+    app = FastAPI()
 
-    def main(self):
+    class TextRequest(BaseModel):
+        text: str
 
-        @asynccontextmanager
-        async def lifespan(app: FastAPI):
-            app.state.client = httpx.AsyncClient(timeout=60.0)
-            yield
-            await app.state.client.aclose()
+        @classmethod
+        def validate(cls, value):
+            if not isinstance(value.text, str):
+                raise ValueError("text must be a string")
+            return value
 
-        app = FastAPI(lifespan=lifespan)
+    def get_ModelPkl(self):
+        with open(self.config.model_path, "rb") as f:
+            model = pickle.load(f)
+        return model
+    def get_TokenizerPkl(self):
+        with open(self.config.tokenizer_path, "rb") as f:
+            tokenizer = pickle.load(f)
+        return tokenizer
+    
 
-        app.add_middleware(
-            CORSMiddleware,
-            allow_origins=["*"],
-            allow_methods=["*"],
-            allow_headers=["*"],
+    @app.post("/summarize")
+    async def summarize_text(request: TextRequest, model, tokenizer):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model.to(device)
+        model.eval()
+        # input is already validated by Pydantic; ensure text is string
+        text = request.text
+        # ... perform summarization using self.model or other logic
+        inputs = tokenizer(
+            text,
+            return_tensors="pt",
+            truncation=True,
+            max_length=512
         )
 
-        class TextRequest(BaseModel):
-            text: str
+        inputs = {k: v.to(device) for k, v in inputs.items()}
 
-        @app.post("/summarize")
-        async def summarize_text(request_body: TextRequest, request: Request):
-            hf_token = os.getenv("HF_TOKEN")
-            client = request.app.state.client
-
-            response = await client.post(
-                "https://router.huggingface.co/hf-inference/models/sametmete3436/t5-small-summarizer",
-                headers={"Authorization": f"Bearer {hf_token}"},
-                json={"inputs": request_body.text}
+        with torch.no_grad():
+            summary_ids = model.generate(
+                input_ids=inputs["input_ids"],
+                attention_mask=inputs["attention_mask"],
+                max_length=128,
+                num_beams=4
             )
 
-            if response.status_code != 200:
-                raise HTTPException(status_code=response.status_code, detail=response.text)
+        summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
 
-            return {"summary": response.json()[0]["summary_text"]}
+        return {"summary": summary}
 
-        return app
